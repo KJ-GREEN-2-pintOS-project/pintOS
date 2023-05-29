@@ -3,7 +3,7 @@
 
 #include <list.h>
 #include <stdbool.h>
-
+int get_high_priority(void);
 /* A counting semaphore. */
 struct semaphore {
 	unsigned value;             /* Current value. */
@@ -43,6 +43,11 @@ void cond_broadcast (struct condition *, struct lock *);
  * The compiler will not reorder operations across an
  * optimization barrier.  See "Optimization Barriers" in the
  * reference guide for more information.*/
+/* 최적화 바리어.
+
+ * 컴파일러는 최적화 바리어를 통해 연산을 재배열하지 않습니다.
+ * 자세한 내용은 레퍼런스 가이드의 "Optimization Barriers"를 참조하세요. 
+*/
 #define barrier() asm volatile ("" : : : "memory")
 
 #endif /* threads/synch.h */
