@@ -73,44 +73,23 @@ sleep을 하면 다음 예약된 스레드가 인터럽트를 다시 활성화�
 이것은 sema_down 함수입니다. */
 void
 sema_down (struct semaphore *sema) {
-	enum intr_level old_level;
-
 	ASSERT (sema != NULL);
 	ASSERT (!intr_context ());
-	
+	enum intr_level old_level;
 	old_level = intr_disable();
-
-	/* if(lock->holder != NULL){
-		thread_current()->wait_on_lock = lock;
-		//printf("%d\n",thread_current()->priority);
-		thread_donate(thread_current());
-	} */
-	/* if(!list_empty(&sema->waiters)){
-		printf("%d , %d\n" , thread_current()->init_priority , thread_current()->priority );
-		thread_donate_semaphore(thread_current(),sema);
-		//printf("%d , %d\n" , thread_current()->init_priority , thread_current()->priority );
-	} */
-	/* 이미 누가 점유 하고 있는데 확인 하러 들어옴 */
-	if(!list_empty(&sema->waiters)){
-		// 이미 점유 하고있는 스레드에게 우선 순위를 넘겨 줘야함
-		
-	}
-
-
+	// thread_current() = 여기는 여러가지 스레드들이 들어온다.
 	while (sema->value == 0) {
+		/* 
+		thread_current() = 이미 락을 점유하고 있는 스레드보다 우선순위가 높아서 점유할려고 들어왔다 
+		sema->waiters(리스트)에 입력할때 우선순위가 높은 순으로 정렬해서 입력한다.
+		*/
 		list_insert_ordered(&sema->waiters, &thread_current()->elem,thread_compare_priority,0);
-		//printf("priority : %d\n", thread_current()->priority);
-		//list_push_back (&sema->waiters, &thread_current ()->elem);
-		//printf("wait list 에 먼가 있다고 지금 실행되고있는 스레드 %d\n",thread_current()->priority );
-		/* if (thread_current()->wait_on_lock == NULL){
-			printf("priority : %d\n", thread_current()->priority);
-		} */
+		// 준비과정이 끝나면 thread_current() 를 잠재운다.
 		thread_block ();
 	}
-	//printf("%d\n", thread_current()->priority);
+
 	sema->value--;
-	
-	
+
 	intr_set_level (old_level);
 }
 
@@ -155,23 +134,27 @@ SEMA의 값을 증가시키고, SEMA를 기다리는 스레드 중 하나를 깨
 void
 sema_up (struct semaphore *sema) {
 	enum intr_level old_level;
-
-	ASSERT (sema != NULL);
-
 	old_level = intr_disable ();
-
-	if(!list_empty (&sema->waiters)){
-		//thread_return_donate(thread_current());
-		//printf("%d \n", thread_current()->priority);
-	}
-
+	ASSERT (sema != NULL);
+	// thread_current() = 여러가지 스레드들이 들어올 수있다.
+	
+	/* 락에 대기중인 스레드가 존재한다면 */
 	if (!list_empty (&sema->waiters)){
+		/* 
+		sema_up 에서 정렬하더라도 락에서 스레드를 공유하고 우선순위 기부로 인한 
+		우선 순위가 바뀔 수 있기 때문에 unblock 전에 정렬을 해줘야한다.
+		*/
+		list_sort(&sema->waiters,thread_compare_priority,0);
+		// waiters 에서 우선순위 높은 스레드를 먼저 깨운다.
 		thread_unblock (list_entry (list_pop_front (&sema->waiters),
 					struct thread, elem));
 		
 	}
+
 	sema->value++;
+
 	thread_compare();
+
 	intr_set_level (old_level);
 }
 
@@ -274,28 +257,21 @@ lock_acquire (struct lock *lock) {
 	/*잠금을 사용할 수 없는 경우 잠금 주소를 저장합니다.
 	현재 우선 순위를 저장하고 기부된 스레드를 목록에 유지합니다(다중 기부).
 	우선적으로 기부하세요.*/
-	if(lock->holder != NULL){
+	// thread_current() = 여러가지 스레드들이 들어올 수있다.
+
+	if(lock->holder){
+		/* 
+		thread_current() = 이미 락을 점유하고 있는 스레드보다 우선순위가 높아서 점유할려고 들어왔다 
+		현재 스레드에 락을 입력해준다.
+		*/
 		thread_current()->wait_on_lock = lock;
-		//printf("%d\n",thread_current()->priority);
-		thread_donate(thread_current());
+		thread_donate(lock->holder);
 	}
+
 	sema_down (&lock->semaphore);
-	
+	// sema_down에서 나온다는 것은 락 점유 했다는 뜻
+	thread_current()->wait_on_lock = NULL;
 	lock->holder = thread_current ();
-	//printf("curthread : %d lock_acpuire_sema_value : %d\n",thread_current()->priority, lock->semaphore.value);
-	
-
-
-	/* 	
-	if (!list_empty (&lock->semaphore.waiters)&&
-	lock->holder->priority < (list_entry (list_front (&lock->semaphore.waiters),
-					struct thread, elem))->priority){
-		int temp = lock->holder->priority;
-		lock->holder->priority = (list_entry (list_front (&lock->semaphore.waiters),
-					struct thread, elem))->priority;
-		(list_entry (list_front (&lock->semaphore.waiters),
-					struct thread, elem))->priority = temp;
-	} */
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -340,18 +316,14 @@ lock_release (struct lock *lock) {
 	잠금이 해제되면 기부 목록에서 
 	잠금을 유지하고 있는 스레드를 제거하고 우선 순위를 적절하게 설정하십시오.
 	*/
-	/* if(lock->holder != NULL){
-		printf("%d\n", thread_current()->priority);
-		thread_return_donate(struct thread * t);
-	} */
+
+	// thread_current() = 여러가지 스레드들이 들어올 수있다.
+	// 락에 대기중인 스레드가 있다면
 	if(!list_empty (&lock->semaphore.waiters)){
 		thread_return_donate(lock);
 	}
 	lock->holder = NULL;
-	
 	sema_up (&lock->semaphore);
-	
-	
 }
 
 /* Returns true if the current thread holds LOCK, false

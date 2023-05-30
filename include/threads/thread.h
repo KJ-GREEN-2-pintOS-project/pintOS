@@ -153,11 +153,16 @@ struct thread {
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
 
+/*-----Alarm Clock-------------------------------------------------------*/
+
 void thread_sleep(int64_t);
 void thread_wakeup(int64_t);
 bool thread_compare_time(const struct list_elem *a,
 							 const struct list_elem *b,
 							 void *aux);
+
+/*-----------------------------------------------------------------------*/
+
 
 
 void thread_init (void);
@@ -181,18 +186,50 @@ const char *thread_name (void);
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
 
+
+
+
+/*-----priority scheduler------------------------------------------------*/
+
 bool thread_compare_priority(const struct list_elem *, const struct list_elem *, void *);
 //void thread_compare(struct list *);
+
 void thread_compare(void);
+
+/*-----------------------------------------------------------------------*/
+
+
+
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+
+
+
+
+
+/*-----lock and donate---------------------------------------------------*/
 
 void thread_donate(struct thread *);
 void thread_return_donate(struct lock *);
 //void thread_return_donate(struct thread *);
 
-void thread_donate_sema(struct thread *);
+void thread_donate_sema(struct thread *, struct list *);
+void thread_return_donate_sema(struct thread *, struct list *);
+void thread_donate_reset(struct thread *t);
+/* bool thread_compare_init_priority(const struct list_elem *a,
+							 const struct list_elem *b,
+							 void *aux); */
+
+bool thread_compare_donate_priority(const struct list_elem *,
+							 const struct list_elem *,
+							 void *);
+
+void thread_donate_depth();
+
+/*-----------------------------------------------------------------------*/
+
+
 
 int thread_get_nice (void);
 void thread_set_nice (int);
