@@ -38,6 +38,9 @@ void cond_wait (struct condition *, struct lock *);
 void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
 
+bool cond_compare_waiter(const struct list_elem *,
+							 const struct list_elem *,
+							 void *);
 /* Optimization barrier.
  *
  * The compiler will not reorder operations across an

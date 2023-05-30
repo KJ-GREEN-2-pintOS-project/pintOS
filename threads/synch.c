@@ -316,7 +316,6 @@ lock_release (struct lock *lock) {
 	잠금이 해제되면 기부 목록에서 
 	잠금을 유지하고 있는 스레드를 제거하고 우선 순위를 적절하게 설정하십시오.
 	*/
-
 	// thread_current() = 여러가지 스레드들이 들어올 수있다.
 	// 락에 대기중인 스레드가 있다면
 	if(!list_empty (&lock->semaphore.waiters)){
@@ -403,7 +402,8 @@ cond_wait (struct condition *cond, struct lock *lock) {
 	ASSERT (lock_held_by_current_thread (lock));
 
 	sema_init (&waiter.semaphore, 0);
-	list_push_back (&cond->waiters, &waiter.elem);
+	/* 우선 순위가 높은 순으로 정렬해서 cond_waiters에 입력한다*/
+	list_insert_ordered(&cond->waiters, &waiter.elem,cond_compare_waiter,0);
 	lock_release (lock);
 	sema_down (&waiter.semaphore);
 	lock_acquire (lock);
@@ -428,8 +428,10 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED) {
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (lock_held_by_current_thread (lock));
-
+	/*조건 변수에서 대기 중인 가장 높은 우선 순위의 스레드에 신호를 보냅니다.*/
 	if (!list_empty (&cond->waiters))
+		/* sema_up 하기 전에 리스트를 정렬을 다시 한번 해준다.*/
+		list_sort(&cond->waiters,cond_compare_waiter,0);
 		sema_up (&list_entry (list_pop_front (&cond->waiters),
 					struct semaphore_elem, elem)->semaphore);
 }
@@ -440,11 +442,52 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED) {
    An interrupt handler cannot acquire a lock, so it does not
    make sense to try to signal a condition variable within an
    interrupt handler. */
+/* COND에 대기 중인 (있는 경우) 모든 스레드를 깨웁니다 (LOCK으로 보호됨).
+이 함수를 호출하기 전에 LOCK을 획득해야 합니다.
+
+인터럽트 핸들러는 잠금을 획득할 수 없으므로 인터럽트 핸들러 내에서
+조건 변수를 시그널하는 것은 의미가 없습니다. */
 void
 cond_broadcast (struct condition *cond, struct lock *lock) {
 	ASSERT (cond != NULL);
 	ASSERT (lock != NULL);
-
+	/*조건 변수에서 대기 중인 모든 스레드에 신호를 보냅니다.*/
 	while (!list_empty (&cond->waiters))
 		cond_signal (cond, lock);
+}
+/* sema 안에 있는 리스트에 접근해서 우선순위를 비교한다*/
+bool cond_compare_waiter(const struct list_elem *a,
+							 const struct list_elem *b,
+							 void *aux)
+{
+	struct semaphore_elem *sem_a = list_entry(a, struct semaphore_elem, elem);
+    struct semaphore_elem *sem_b = list_entry(b, struct semaphore_elem, elem);
+    
+    struct thread *thread_a = NULL;
+    if (!list_empty(&sem_a->semaphore.waiters))
+    {
+        thread_a = list_entry(list_front(&sem_a->semaphore.waiters), struct thread, elem);
+    }
+    
+    struct thread *thread_b = NULL;
+    if (!list_empty(&sem_b->semaphore.waiters))
+    {
+        thread_b = list_entry(list_front(&sem_b->semaphore.waiters), struct thread, elem);
+    }
+    // 두 리스트가 모두 비어있는 경우에도 처리를 추가
+    if (thread_a == NULL && thread_b == NULL)
+    {
+        return false; 
+    }
+    // a 리스트가 비어있는 경우 처리를 추가
+    if (thread_a == NULL)
+    {
+        return false; 
+    }
+    // b 리스트가 비어있는 경우 처리를 추가
+    if (thread_b == NULL)
+    {
+        return true; 
+    }
+    return thread_a->priority > thread_b->priority;
 }

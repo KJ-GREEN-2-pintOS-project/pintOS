@@ -450,7 +450,8 @@ bool thread_compare_priority(const struct list_elem *a,
 	return list_entry(a, struct thread, elem)->priority > list_entry(b, struct thread, elem)->priority;
 }
 
-/* 현재 실행중인 쓰레드와 대기 중인 쓰레드의 우선 순위 비교해서
+/* 
+현재 실행중인 쓰레드와 대기 중인 쓰레드의 우선 순위 비교해서
 실행중인 쓰레드가 우선순위가 낮다면 양보한다.
 void
 thread_compare(struct list *cur_list){
@@ -548,18 +549,6 @@ void thread_return_donate(struct lock *release_locker){
 			list_remove(e);
 		}
 	}
-	
-	/* while(!list_empty(&t->donations)){
-		if(list_entry (list_front (&release_locker->semaphore.waiters), struct thread, elem)->priority 
-			== list_entry (list_front (&t->donations), struct thread, elem)->priority){
-			list_pop_front (&t->donations);
-			break;
-		}
-		else{
-			list_push_back(&t->donations,
-							&list_entry (list_pop_front (&t->donations), struct thread, elem)->elem);
-		}
-	} */
 	
 	thread_donate_reset(t);
 
