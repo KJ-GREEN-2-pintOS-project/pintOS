@@ -153,15 +153,12 @@ timer_interrupt (struct intr_frame *args UNUSED) {
 	thread_tick ();
 
 	/*
-	check sleep list and the global tick
-	find any threads to wake up
-	move them to the ready list if necessary
-	update the global tick	
 	수면 목록과 전역 틱을 확인하세요.
 	깨워야 할 스레드가 있는지 확인하세요.
 	필요한 경우 준비 목록으로 이동하세요.
 	전역 틱을 업데이트하세요.
 	*/
+
 	thread_wakeup(ticks);
 }
 

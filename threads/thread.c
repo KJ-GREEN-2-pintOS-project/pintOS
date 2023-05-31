@@ -243,6 +243,7 @@ void thread_print_stats(void)
 		   idle_ticks, kernel_ticks, user_ticks);
 }
 
+/* thread_create() 추가사항 */
 /* Creates a new kernel thread named NAME with the given initial
    PRIORITY, which executes FUNCTION passing AUX as the argument,
    and adds it to the ready queue.  Returns the thread identifier
@@ -301,6 +302,7 @@ tid_t thread_create(const char *name, int priority,
 	t->tf.eflags = FLAG_IF;
 	/* Add to run queue. */
 	thread_unblock(t);
+	/* 스레드를 만들어서 ready_list 에 입력했으니까 비교를 한번 해준다*/
 	thread_compare();
 
 	return tid;
@@ -327,6 +329,7 @@ void thread_block(void)
 	schedule();
 }
 
+/* thread_unblock() 추가사항 */
 /* Transitions a blocked thread T to the ready-to-run state.
    This is an error if T is not blocked.  (Use thread_yield() to
    make the running thread ready.)
@@ -419,6 +422,7 @@ void thread_exit(void)
 	NOT_REACHED();
 }
 
+/* thread_yield() 추가사항 */
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
 /* CPU 양보(Yield)를 수행합니다. 현재 스레드는 슬립 상태로 전환되지 않으며,
@@ -431,9 +435,7 @@ void thread_yield(void)
 	ASSERT(!intr_context());
 
 	old_level = intr_disable();
-	if (curr != idle_thread)
-	{
-		// list_push_back (&ready_list, &curr->elem);
+	if (curr != idle_thread){
 		list_insert_ordered(&ready_list, &curr->elem, thread_compare_priority, 0);
 	}
 	do_schedule(THREAD_READY);
@@ -481,6 +483,7 @@ void thread_compare(void)
 
 /*-----------------------------------------------------------------------*/
 
+/* thread_set_priority() 추가사항 */
 /* Sets the current thread's priority to NEW_PRIORITY. */
 /* 현재 스레드의 우선순위를 NEW_PRIORITY로 설정합니다. */
 void thread_set_priority(int new_priority)
@@ -523,10 +526,7 @@ void thread_donate(struct thread * t){
 	
 	thread_donate_depth();
 
-	/* 기부 받은 우선순위들을 갱신*/
-	if(list_entry (list_front (&t->donations), struct thread, elem)->priority > t->priority ){
-		t->priority = list_entry (list_front (&t->donations), struct thread, elem)->priority;
-	}
+	thread_donate_reset(t);
 
 	intr_set_level(old_level);
 }
@@ -535,7 +535,7 @@ void thread_donate(struct thread * t){
 void thread_return_donate(struct lock *release_locker){
 	enum intr_level old_level;
 	old_level = intr_disable();
-
+	// 지금 락 점유를 갖고 있는 스레드를 지정한다
 	struct thread *t = release_locker->holder;
 	struct thread *temp = NULL;
 	struct list_elem *e = NULL;
@@ -591,6 +591,7 @@ void thread_donate_depth(void){
 		curr = holder;
 	}
 }
+
 
 /*------------------------------------------------------------------------*/
 

@@ -143,6 +143,7 @@ sema_up (struct semaphore *sema) {
 		/* 
 		sema_up 에서 정렬하더라도 락에서 스레드를 공유하고 우선순위 기부로 인한 
 		우선 순위가 바뀔 수 있기 때문에 unblock 전에 정렬을 해줘야한다.
+		예시) priority-donate-sema 테스트 케이스
 		*/
 		list_sort(&sema->waiters,thread_compare_priority,0);
 		// waiters 에서 우선순위 높은 스레드를 먼저 깨운다.

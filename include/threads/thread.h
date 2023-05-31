@@ -124,14 +124,17 @@ struct thread {
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
-	int64_t wakeup_tick;
 
-	int init_priority;
-	struct lock *wait_on_lock;            
-	struct list donations;
+	int64_t wakeup_tick;				/* 잘때 깨어나야할 시간을 저장하는 변수*/
+	int init_priority;					/* 처음 부터 갖고있는 우선순위 */
+
+	struct lock *wait_on_lock;          /* 락에 대한 정보를 담을 구조체*/
+	struct list donations;				/* 자신에게 기부한 스레드를 담을 리스트*/
+
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
-	struct list_elem d_elem;
+
+	struct list_elem d_elem;			/* donations 리스트에 쓰일 원소*/
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -212,14 +215,8 @@ void thread_set_priority (int);
 
 void thread_donate(struct thread *);
 void thread_return_donate(struct lock *);
-//void thread_return_donate(struct thread *);
 
-void thread_donate_sema(struct thread *, struct list *);
-void thread_return_donate_sema(struct thread *, struct list *);
 void thread_donate_reset(struct thread *t);
-/* bool thread_compare_init_priority(const struct list_elem *a,
-							 const struct list_elem *b,
-							 void *aux); */
 
 bool thread_compare_donate_priority(const struct list_elem *,
 							 const struct list_elem *,
