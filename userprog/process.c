@@ -38,6 +38,11 @@ process_init (void) {
  * before process_create_initd() returns. Returns the initd's
  * thread id, or TID_ERROR if the thread cannot be created.
  * Notice that THIS SHOULD BE CALLED ONCE. */
+/* "initd"라는 이름의 첫 번째 유저랜드 프로그램을 FILE_NAME에서 로드하여 실행합니다.
+새로운 스레드는 process_create_initd()가 반환되기 전에 스케줄될 수 있으며
+심지어 종료될 수도 있습니다. initd의 스레드 ID를 반환하며,
+스레드를 생성할 수 없는 경우에는 TID_ERROR를 반환합니다.
+한 번만 호출되어야 함에 유의하세요. */
 tid_t
 process_create_initd (const char *file_name) {
 	char *fn_copy;
@@ -45,12 +50,16 @@ process_create_initd (const char *file_name) {
 
 	/* Make a copy of FILE_NAME.
 	 * Otherwise there's a race between the caller and load(). */
+	/* FILE_NAME의 사본을 만듭니다.
+	그렇지 않으면 호출자와 load() 함수 사이에 경합이 발생할 수 있습니다. */
+
 	fn_copy = palloc_get_page (0);
 	if (fn_copy == NULL)
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
 
 	/* Create a new thread to execute FILE_NAME. */
+	/* FILE_NAME을 실행하기 위해 새로운 스레드를 생성합니다. */
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
@@ -73,6 +82,8 @@ initd (void *f_name) {
 
 /* Clones the current process as `name`. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
+/* 현재 프로세스를 name으로 복제합니다. 새로운 프로세스의 스레드 ID를 반환하며,
+스레드를 생성할 수 없는 경우에는 TID_ERROR를 반환합니다. */
 tid_t
 process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	/* Clone current thread to new thread.*/

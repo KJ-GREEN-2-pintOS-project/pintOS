@@ -16,6 +16,14 @@
    this case, as they normally would, because they can only
    protect kernel threads from one another, not from interrupt
    handlers. */
+/* "인터럽트 큐"는 커널 스레드와 외부 인터럽트 핸들러 간에 공유되는 원형 버퍼입니다.
+
+인터럽트 큐 함수는 커널 스레드나 외부 인터럽트 핸들러에서 호출될 수 있습니다.
+intq_init()를 제외하고는 양쪽 경우 모두 인터럽트가 비활성화되어야 합니다.
+
+인터럽트 큐는 "모니터"의 구조를 가지고 있습니다.
+threads/synch.h의 락과 조건 변수는 일반적으로 사용되지만, 
+인터럽트 핸들러로부터 커널 스레드를 보호할 수 없기 때문에 사용할 수 없습니다. */
 
 /* Queue buffer size, in bytes. */
 #define INTQ_BUFSIZE 64
