@@ -137,7 +137,7 @@ sema_up (struct semaphore *sema) {
 	old_level = intr_disable ();
 	if (!list_empty (&sema->waiters)) {
 		// waiters 내부에서 우선순위 순으로 정렬
-		list_sort(&sema->waiters, thread_compare_priority,0);
+		list_sort(&sema->waiters,thread_compare_priority,0);
 		thread_unblock (list_entry (list_pop_front (&sema->waiters),
 					struct thread, elem));
 		// 앞에서부터 unblock
@@ -242,8 +242,8 @@ lock_acquire (struct lock *lock) {
 	ASSERT (lock != NULL); //lock이 NULL이 아닌지 검사
 	ASSERT (!intr_context ()); // 현재 코드가 인터럽트 컨텍스트에서 실행되지 않아야함을 검사한다. 인터럽트 컨텍스트에서는 일부 동작이 제한되거나 다르게 동작할 수 있기 때문
 	ASSERT (!lock_held_by_current_thread (lock)); //현재 스레드가 lock을 이미 소유하고 있지 않아야함을 검사한다.
+	struct thread *cur = thread_current();
 	if(lock ->holder){
-		struct thread *cur = thread_current;
 		cur->wait_on_lock = lock;
 		list_insert_ordered(&lock->holder->donations, &cur->donation_element, compare_donate_priority,0);
 		donate_priority();
@@ -251,6 +251,7 @@ lock_acquire (struct lock *lock) {
 	// lock을 얻기 전에 lock을 가지고 있는 스레드에게 priority를 양도해야한다.
 
 	sema_down (&lock->semaphore);
+	cur -> wait_on_lock = NULL;
 	lock->holder = thread_current ();
 }
 
@@ -296,6 +297,9 @@ void
 lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
+
+	remove_with_lock(lock);
+	refresh_priority();
 
 	lock->holder = NULL;
 	sema_up (&lock->semaphore);

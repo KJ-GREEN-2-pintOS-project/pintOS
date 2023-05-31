@@ -364,7 +364,7 @@ thread_unblock (struct thread *t) {
 	ASSERT (t->status == THREAD_BLOCKED); // t의 상태가 blocked인지 확인한다.
 	// list_push_back (&ready_list, &t->elem); // 준비 리스트의 뒤에 t를 추가한다.
 	list_insert_ordered(&ready_list, &t->elem, thread_compare_priority ,0);
-	sort_ready_list();
+	// sort_ready_list();
 	t->status = THREAD_READY; // t의 상태를 READY로 변경한다
 	intr_set_level (old_level); // 이전 인터럽트 레벨로 복원한다.
 }
@@ -453,13 +453,13 @@ thread_yield (void) {
 	if (curr != idle_thread)
 		// list_push_back (&ready_list, &curr->elem);
 		list_insert_ordered(&ready_list, &curr->elem, thread_compare_priority ,0);
-	sort_ready_list();
+	// sort_ready_list();
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
-void sort_ready_list() {
-	list_sort(&ready_list, thread_compare_priority,NULL);
-}
+// void sort_ready_list() {
+// 	list_sort(&ready_list, thread_compare_priority,NULL);
+// }
 bool thread_compare_priority(const struct list_elem *a,
 							 const struct list_elem *b,
 							 void *aux)
@@ -480,7 +480,10 @@ max_priority (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	thread_current ()->init_priority = new_priority;
+	refresh_priority();
 	max_priority();
+	
 }
 bool compare_donate_priority(const struct list_elem *c,
 							 const struct list_elem *d,
@@ -500,18 +503,16 @@ donate_priority (void)
 	int depth; // 깊이
 	struct thread *cur = thread_current(); // 현재의 스레드
 	for (depth =0; depth <8; depth ++){
-		if (!cur->wait_on_lock){
+		if (!cur->wait_on_lock)
 			break;
-		}
 		// cur 현재 실행 중인 스레드를 가리킨다. 함수 내에서 현재 스레드를 의미하고 우선순위 기부를 위해 현재 스레드의 우선순위를 다른 스레드에게 
 		// ㄱ기부하기 위해 업데이트
 		struct thread *holder = cur->wait_on_lock->holder;
 		// cur ->wait_on_lock :현재 스레드가 대기 중인 락을 가리킴
 		// cur->wait_on_lock->holder : 대기 중인 락의 소유
 		holder->priority = cur ->priority;
-
+		cur = holder;
 	}
-
 }
 
 void 
@@ -522,7 +523,7 @@ remove_with_lock (struct lock *lock){
 	struct thread *cur = thread_current();
 	// &cur ->donations는 cur의 donations 리스트의 시작 부분의 주소를 나타낸다.
 	// cur현재 실행 중인 스레드를 가리키는 포인터, donations은 해당 스레드가 받은 우선순위 기부를 관리하는 리스트.
-	for (e =list_begin(&cur ->donations); e= !list_end(&cur ->donations); e= list_next(e)){
+	for (e =list_begin(&cur ->donations); e != list_end(&cur ->donations); e= list_next(e)){
 		// 끝요소가 아닌 동안 반복한다.
 		struct thread *t = list_entry(e, struct thread, donation_element);
 		if(t->wait_on_lock == lock){
@@ -536,12 +537,17 @@ refresh_priority (void){
 	struct thread *cur = thread_current();
 	cur -> priority = cur ->init_priority;
 	if(!list_empty(&cur->donations)){
-		list_sort(cur,donate_priority,0);	
-		
+		list_sort(&cur->donations,donate_priority,0);	
+		struct thread *front = list_entry(list_front(&cur -> donations),struct thread, donation_element);
+		if(front->priority > cur->priority){
+			cur->priority = front->priority;
+			//가장 앞에 있는 스레드의 우선 순위와 현재 스레드의 우선순위를 비교하여
+			// 앞에 있는 것이 더 높다면 현재 스레드의 우선순위를 업데이트한다
+		}
 	}
-	
-
 }
+
+
 /* Returns the current thread's priority. */
 /* 현재 스레드의 우선순위를 돌려준다.*/
 // 우선 순위 기부가 있는 경우에는 더 높은 우선순위를 반환
