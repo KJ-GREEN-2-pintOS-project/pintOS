@@ -283,6 +283,10 @@ reset_channel (struct channel *c) {
 
 	/* Issue soft reset sequence, which selects device 0 as a side effect.
 	   Also enable interrupts. */
+	/* 부드러운 리셋 시퀀스를 실행하고, 
+	이로 인해 디바이스 0이 선택됩니다.
+	또한 인터럽트를 활성화합니다. */
+	
 	outb (reg_ctl (c), 0);
 	timer_usleep (10);
 	outb (reg_ctl (c), CTL_SRST);
@@ -470,6 +474,10 @@ wait_until_idle (const struct disk *d) {
    and then return the status of the DRQ bit.
    The ATA standards say that a disk may take as long as that to
    complete its reset. */
+/* 디스크 D가 BSY를 해제할 때까지 최대 30초까지 기다린 후,
+그리고나서 DRQ 비트의 상태를 반환합니다.
+ATA 표준에 따르면 디스크는 리셋을 완료하는 데 
+해당 시간이 소요될 수 있습니다. */
 static bool
 wait_while_busy (const struct disk *d) {
 	struct channel *c = d->channel;

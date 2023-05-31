@@ -16,6 +16,7 @@ enum intr_level intr_enable (void);
 enum intr_level intr_disable (void);
 
 /* Interrupt stack frame. */
+/* 인터럽트 스택 프레임입니다. */
 struct gp_registers {
 	uint64_t r15;
 	uint64_t r14;
@@ -37,6 +38,8 @@ struct gp_registers {
 struct intr_frame {
 	/* Pushed by intr_entry in intr-stubs.S.
 	   These are the interrupted task's saved registers. */
+	/* intr-stubs.S 파일의 intr_entry에 의해 푸시됩니다.
+		이는 인터럽트된 작업의 저장된 레지스터입니다. */
 	struct gp_registers R;
 	uint16_t es;
 	uint16_t __pad1;
@@ -49,9 +52,14 @@ struct intr_frame {
 /* Sometimes pushed by the CPU,
    otherwise for consistency pushed as 0 by intrNN_stub.
    The CPU puts it just under `eip', but we move it here. */
+/* CPU에 의해 때때로 푸시되며,
+그렇지 않으면 일관성을 위해 intrNN_stub에서 0으로 푸시됩니다.
+CPU는 이것을 eip 아래에 놓지만, 우리는 여기로 이동시킵니다. */
 	uint64_t error_code;
 /* Pushed by the CPU.
    These are the interrupted task's saved registers. */
+/* CPU에 의해 푸시됩니다.
+이는 중단된 작업의 저장된 레지스터입니다. */
 	uintptr_t rip;
 	uint16_t cs;
 	uint16_t __pad5;
