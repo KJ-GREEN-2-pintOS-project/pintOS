@@ -131,16 +131,18 @@ void thread_wakeup(int64_t); // 깨우는 함수
 bool thread_compare_time(const struct list_elem *a, const struct list_elem *b, void *aux);
 //void timer_interrupt(struct intr_frame *tf);
 
-bool compare_donate_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
+bool compare_donate_priority(const struct list_elem *c, const struct list_elem *d, void *aux);
 void donate_priority (void);
 typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
-void sort_ready_list(void);
+// void sort_ready_list(void);
 void thread_block (void);
 void thread_unblock (struct thread *);
  
 void remove_with_lock (struct lock *lock);
 void refresh_priority (void);
+void lock_release (struct lock *lock);
+
 bool thread_compare_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
 void max_priority (void);
 struct thread *thread_current (void);

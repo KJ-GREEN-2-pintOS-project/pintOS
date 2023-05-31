@@ -64,6 +64,7 @@ list_init (struct list *list) {
 }
 
 /* Returns the beginning of LIST.  */
+// 시작부분을 반환
 struct list_elem *
 list_begin (struct list *list) {
 	ASSERT (list != NULL);
@@ -73,6 +74,8 @@ list_begin (struct list *list) {
 /* Returns the element after ELEM in its list.  If ELEM is the
    last element in its list, returns the list tail.  Results are
    undefined if ELEM is itself a list tail. */
+
+// 리스트의 마지막 요소라면 리스트의 tail을 반환한다. 
 struct list_elem *
 list_next (struct list_elem *elem) {
 	ASSERT (is_head (elem) || is_interior (elem));
