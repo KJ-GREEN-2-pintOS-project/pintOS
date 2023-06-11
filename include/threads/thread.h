@@ -9,6 +9,8 @@
 #include "vm/vm.h"
 #endif
 
+// * USERPROG 추가
+#include "include/threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status {
@@ -124,6 +126,7 @@ struct thread {
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
+	int64_t time_to_wakeup;				/* Time to wake up (for sleeping thread) */
 
 	int64_t wakeup_tick;				/* 잘때 깨어나야할 시간을 저장하는 변수*/
 	int init_priority;					/* 처음 부터 갖고있는 우선순위 */
@@ -134,7 +137,31 @@ struct thread {
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
+
+	/* donation list */
+
+	int init_priority;
+
+	struct lock *wait_on_lock;
+	struct list donations;
+	struct list_elem donation_elem;
+
+	struct thread* parent_t; /* 부모 프로세스의 디스크립터 */
+	struct list children_list; /* 자식 리스트 */
+	struct list_elem child_elem; /* 자식 리스트 element */
+
+	struct semaphore sema_exit;/* exit 세마포어 */
+	struct semaphore sema_wait;/* load 세마포어 */
+	struct semaphore sema_fork; 
+	int exit_status;/* exit 호출 시 종료 status */
+
+	/* file descriptor */
+	struct file **fdt;
+	int next_fd;
+	struct file *running_file;
+
 	struct list_elem d_elem;			/* donations 리스트에 쓰일 원소*/
+
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -146,9 +173,15 @@ struct thread {
 #endif
 
 	/* Owned by thread.c. */
+
+	struct intr_frame tf;               /* Information for switching */
+	struct intr_frame ptf;
+	unsigned magic;                     /* Detects stack overflow. */
+
 	/* thread.c에서 소유됩니다. */
 	struct intr_frame tf;               /* Information for switching */ /* 스위칭을 위한 정보입니다. */
 	unsigned magic;                     /* Detects stack overflow. */ /* 스택 오버플로우를 감지합니다. */
+
 };
 
 /* If false (default), use round-robin scheduler.
@@ -230,5 +263,15 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
+
+// Priority_scheduling
+void thread_test_preemption(void);
+bool thread_compare_priority(struct list_elem *l, struct list_elem *s, void *aux UNUSED);
+
+// Donation_Priority_Scheduling
+bool thread_compare_donate_priority(const struct list_elem *l, const struct list_elem *s, void *aux UNUSED);
+void donate_priority(void);
+void remove_with_lock(struct lock *lock);
+void refresh_priority(void);
 
 #endif /* threads/thread.h */

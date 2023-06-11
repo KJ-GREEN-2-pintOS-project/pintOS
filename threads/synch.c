@@ -79,12 +79,17 @@ sema_down (struct semaphore *sema) {
 	old_level = intr_disable();
 	// thread_current() = 여기는 여러가지 스레드들이 들어온다.
 	while (sema->value == 0) {
+
+		// list_push_back (&sema->waiters, &thread_current ()->elem);
+		list_insert_ordered (&sema->waiters, &thread_current ()->elem, thread_compare_priority, 0);
+
 		/* 
 		thread_current() = 이미 락을 점유하고 있는 스레드보다 우선순위가 높아서 점유할려고 들어왔다 
 		sema->waiters(리스트)에 입력할때 우선순위가 높은 순으로 정렬해서 입력한다.
 		*/
 		list_insert_ordered(&sema->waiters, &thread_current()->elem,thread_compare_priority,0);
 		// 준비과정이 끝나면 thread_current() 를 잠재운다.
+
 		thread_block ();
 	}
 
@@ -135,6 +140,16 @@ void
 sema_up (struct semaphore *sema) {
 	enum intr_level old_level;
 	old_level = intr_disable ();
+
+	if (!list_empty (&sema->waiters)) {
+		list_sort(&sema->waiters, thread_compare_priority, 0);
+		thread_unblock (list_entry (list_pop_front (&sema->waiters),
+					struct thread, elem));
+	}
+	sema->value++;
+	if (!intr_context()) {}
+	thread_test_preemption();
+
 	ASSERT (sema != NULL);
 	// thread_current() = 여러가지 스레드들이 들어올 수있다.
 	
@@ -155,6 +170,7 @@ sema_up (struct semaphore *sema) {
 	sema->value++;
 
 	thread_compare();
+
 
 	intr_set_level (old_level);
 }
@@ -269,9 +285,22 @@ lock_acquire (struct lock *lock) {
 		thread_donate(lock->holder);
 	}
 
+	struct thread *curr = thread_current();
+	if (lock->holder) {
+		curr->wait_on_lock = lock;
+		list_insert_ordered(&lock->holder->donations, &curr->donation_elem, thread_compare_donate_priority, 0);
+
+		donate_priority();
+	}
+
 	sema_down (&lock->semaphore);
+
+
+	curr->wait_on_lock = NULL;
+
 	// sema_down에서 나온다는 것은 락 점유 했다는 뜻
 	thread_current()->wait_on_lock = NULL;
+
 	lock->holder = thread_current ();
 }
 
@@ -313,6 +342,12 @@ void
 lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
+
+
+	remove_with_lock(lock);
+	refresh_priority();
+
+
 	/*
 	잠금이 해제되면 기부 목록에서 
 	잠금을 유지하고 있는 스레드를 제거하고 우선 순위를 적절하게 설정하십시오.
@@ -323,6 +358,7 @@ lock_release (struct lock *lock) {
 		thread_remove_donate(lock);
 		thread_donate_reset(lock->holder);
 	}
+
 	lock->holder = NULL;
 	sema_up (&lock->semaphore);
 }
@@ -346,6 +382,19 @@ struct semaphore_elem {
 	struct list_elem elem;              /* List element. */
 	struct semaphore semaphore;         /* This semaphore. */
 };
+
+/* semaphore_elem.elem 을 입력받으면 list_entry 로 semaphore_elem 구조체를 구하여 저장하고 이 구조체가 가지는 
+semaphore 의 waiters 리스트를 받아온다. 이 waiters 리스트의 맨 앞 element 스레드의 priority 끼리 비교하여 반환*/
+bool 
+sema_compare_priority (const struct list_elem *l, const struct list_elem *s, void *aux UNUSED) {
+	struct semaphore_elem *l_sema = list_entry (l, struct semaphore_elem, elem);
+	struct semaphore_elem *s_sema = list_entry (s, struct semaphore_elem, elem);
+
+	struct list *waiter_l_sema = &(l_sema->semaphore.waiters);
+	struct list *waiter_s_sema = &(s_sema->semaphore.waiters);
+
+	return list_entry (list_begin (waiter_l_sema), struct thread, elem)->priority > list_entry (list_begin (waiter_s_sema), struct thread, elem)->priority;
+}
 
 /* Initializes condition variable COND.  A condition variable
    allows one piece of code to signal a condition and cooperating
@@ -404,8 +453,13 @@ cond_wait (struct condition *cond, struct lock *lock) {
 	ASSERT (lock_held_by_current_thread (lock));
 
 	sema_init (&waiter.semaphore, 0);
+
+	list_insert_ordered (&cond->waiters, &waiter.elem, sema_compare_priority, 0);
+	// list_push_back (&cond->waiters, &waiter.elem);
+
 	/* 우선 순위가 높은 순으로 정렬해서 cond_waiters에 입력한다*/
 	list_insert_ordered(&cond->waiters, &waiter.elem,cond_compare_waiter,0);
+
 	lock_release (lock);
 	sema_down (&waiter.semaphore);
 	lock_acquire (lock);
@@ -430,12 +484,20 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED) {
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (lock_held_by_current_thread (lock));
+
+
+	if (!list_empty (&cond->waiters)) {
+		list_sort (&cond->waiters, sema_compare_priority, 0);
+		sema_up (&list_entry (list_pop_front (&cond->waiters), struct semaphore_elem, elem)->semaphore);
+	}
+
 	/*조건 변수에서 대기 중인 가장 높은 우선 순위의 스레드에 신호를 보냅니다.*/
 	if (!list_empty (&cond->waiters))
 		/* sema_up 하기 전에 리스트를 정렬을 다시 한번 해준다.*/
 		list_sort(&cond->waiters,cond_compare_waiter,0);
 		sema_up (&list_entry (list_pop_front (&cond->waiters),
 					struct semaphore_elem, elem)->semaphore);
+
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
