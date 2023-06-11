@@ -92,6 +92,12 @@ pml4e_walk (uint64_t *pml4e, const uint64_t va, int create) {
  * virtual addresses, but none for user virtual addresses.
  * Returns the new page directory, or a null pointer if memory
  * allocation fails. */
+/*
+"새로운 페이지 맵 레벨 4 (pml4)을 생성합니다. 
+이 pml4는 커널 가상 주소에 대한 매핑을 가지고 있지만 
+사용자 가상 주소에는 매핑되어 있지 않습니다. 
+메모리 할당에 실패한 경우 새로운 페이지 디렉터리를 반환하거나 널 포인터를 반환합니다."
+*/
 uint64_t *
 pml4_create (void) {
 	uint64_t *pml4 = palloc_get_page (0);

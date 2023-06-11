@@ -1,5 +1,5 @@
 #!/bin/bash
 make clean
-cd threads/
+cd userprog/
 make check
 cd ..

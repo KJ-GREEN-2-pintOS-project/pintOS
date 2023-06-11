@@ -57,6 +57,9 @@ exception_init (void) {
 	/* Most exceptions can be handled with interrupts turned on.
 	   We need to disable interrupts for page faults because the
 	   fault address is stored in CR2 and needs to be preserved. */
+	/*
+	"대부분의 예외는 인터럽트가 켜진 상태에서 처리될 수 있습니다. 그러나 페이지 폴트의 경우 인터럽트를 비활성화해야 합니다. 이는 폴트 주소가 CR2에 저장되고 보존되어야 하기 때문입니다."
+	*/
 	intr_register_int (14, 0, INTR_OFF, page_fault, "#PF Page-Fault Exception");
 }
 
@@ -139,7 +142,8 @@ page_fault (struct intr_frame *f) {
 	not_present = (f->error_code & PF_P) == 0;
 	write = (f->error_code & PF_W) != 0;
 	user = (f->error_code & PF_U) != 0;
-
+	
+	exit(-1);
 #ifdef VM
 	/* For project 3 and later. */
 	if (vm_try_handle_fault (f, fault_addr, user, write, not_present))

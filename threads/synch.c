@@ -320,7 +320,8 @@ lock_release (struct lock *lock) {
 	// thread_current() = 여러가지 스레드들이 들어올 수있다.
 	// 락에 대기중인 스레드가 있다면
 	if(!list_empty (&lock->semaphore.waiters)){
-		thread_return_donate(lock);
+		thread_remove_donate(lock);
+		thread_donate_reset(lock->holder);
 	}
 	lock->holder = NULL;
 	sema_up (&lock->semaphore);

@@ -117,7 +117,7 @@ main (void) {
 #endif
 
 	printf ("Boot complete.\n");
-
+	printf ("Boot complete next : %s \n",*argv);
 	/* Run actions specified on kernel command line. */
 	run_actions (argv);
 
@@ -143,6 +143,9 @@ bss_init (void) {
 /* Populates the page table with the kernel virtual mapping,
  * and then sets up the CPU to use the new page directory.
  * Points base_pml4 to the pml4 it creates. */
+/* 페이지 테이블을 커널 가상 매핑으로 채우고,
+CPU를 새로운 페이지 디렉토리를 사용하도록 설정합니다.
+base_pml4를 생성하는 pml4로 지정합니다. */
 static void
 paging_init (uint64_t mem_end) {
 	uint64_t *pml4, *pte;
@@ -202,6 +205,8 @@ read_command_line (void) {
 
 /* Parses options in ARGV[]
    and returns the first non-option argument. */
+/* ARGV[]에서 옵션을 파싱하고
+첫 번째 옵션 이외의 인수를 반환합니다. */
 static char **
 parse_options (char **argv) {
 	for (; *argv != NULL && **argv == '-'; argv++) {
@@ -259,7 +264,7 @@ run_actions (char **argv) {
 	/* An action. */
 	struct action {
 		char *name;                       /* Action name. */
-		int argc;                         /* # of args, including action name. */
+		int argc;                         /* # of args, including action name. */ /*"인수 개수, 작업 이름을 포함한 개수입니다."*/
 		void (*function) (char **argv);   /* Function to execute action. */
 	};
 
@@ -293,6 +298,7 @@ run_actions (char **argv) {
 				PANIC ("action `%s' requires %d argument(s)", *argv, a->argc - 1);
 
 		/* Invoke action and advance. */
+		//printf("%s \n",*argv);
 		a->function (argv);
 		argv += a->argc;
 	}

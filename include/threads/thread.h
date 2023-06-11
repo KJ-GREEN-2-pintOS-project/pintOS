@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -127,16 +128,24 @@ struct thread {
 
 	int64_t wakeup_tick;				/* 잘때 깨어나야할 시간을 저장하는 변수*/
 	int init_priority;					/* 처음 부터 갖고있는 우선순위 */
+	int exit_status;					/* project 2 자신의 status 를 저장할 변수*/
 
 	struct lock *wait_on_lock;          /* 락에 대한 정보를 담을 구조체*/
-	struct list donations;				/* 자신에게 기부한 스레드를 담을 리스트*/
+	struct semaphore wait_sema;			/* project 2 wait , exit , fork 애서 사용할 세마포어 */
+	struct semaphore clear_sema;		/* project 2 자식 들의 syn를 위해 */
 
+	struct list donations;				/* 자신에게 기부한 스레드를 담을 리스트*/
+	struct list children;				/* project 2 자식 리스트*/
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
-
-	struct list_elem d_elem;			/* donations 리스트에 쓰일 원소*/
-
-#ifdef USERPROG
+	struct list_elem d_elem;			/* donations 리스트에 쓰일 원소 */
+	struct list_elem child_elem;		/* project 2 리스트에 쓰일 원소 */
+	
+	struct file *running_file;			/* project 2 현재 실행 중인 파일을 담을 변수*/
+	struct file **fdt;					/* project 2 파일 디스크립터 설정 */
+	int next_fd;						/* project 2 다음 파일을 넣을 인덱스 */
+	#ifdef USERPROG
+	
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
 #endif
@@ -144,7 +153,7 @@ struct thread {
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;
 #endif
-
+	struct intr_frame fork_if;			/*  project 2 fork 시 사용할 프레임 */
 	/* Owned by thread.c. */
 	/* thread.c에서 소유됩니다. */
 	struct intr_frame tf;               /* Information for switching */ /* 스위칭을 위한 정보입니다. */
@@ -195,7 +204,6 @@ void thread_yield (void);
 /*-----priority scheduler------------------------------------------------*/
 
 bool thread_compare_priority(const struct list_elem *, const struct list_elem *, void *);
-//void thread_compare(struct list *);
 
 void thread_compare(void);
 
@@ -214,14 +222,11 @@ void thread_set_priority (int);
 /*-----lock and donate---------------------------------------------------*/
 
 void thread_donate(struct thread *);
-void thread_return_donate(struct lock *);
-
+void thread_remove_donate(struct lock *);
 void thread_donate_reset(struct thread *t);
-
 bool thread_compare_donate_priority(const struct list_elem *,
 							 const struct list_elem *,
 							 void *);
-
 void thread_donate_depth();
 
 /*-----------------------------------------------------------------------*/

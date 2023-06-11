@@ -21,6 +21,15 @@
  * exactly what they sound like.  The TSS is used primarily for
  * stack switching on interrupts. */
 
+/* 글로벌 디스크립터 테이블(GDT)
+GDT는 x86-64에 특화된 구조체로서, 
+시스템의 모든 프로세스가 사용할 수 있는 세그먼트를 정의하며 해당 세그먼트의 권한에 따라 사용됩니다. 
+또한 프로세스당 개별적인 로컬 디스크립터 테이블(LDT)도 있지만, 현대의 운영 체제에서는 사용되지 않습니다.
+GDT의 각 항목은 테이블 내에서의 바이트 오프셋으로 식별되는 세그먼트를 나타냅니다. 
+우리의 목적에는 코드, 데이터 및 TSS(Task-State Segment) 
+디스크립터의 세 가지 유형의 세그먼트만이 관심을 가집니다. 
+전자 두 유형은 이름 그대로입니다. TSS는 주로 인터럽트에서의 스택 전환에 사용됩니다. */
+
 struct segment_desc {
 	unsigned lim_15_0 : 16;
 	unsigned base_15_0 : 16;

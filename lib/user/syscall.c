@@ -13,7 +13,7 @@ static __inline int64_t syscall (uint64_t num_, uint64_t a1_, uint64_t a2_,
 	register uint64_t *a4 asm ("r10") = (uint64_t *) a4_;
 	register uint64_t *a5 asm ("r8") = (uint64_t *) a5_;
 	register uint64_t *a6 asm ("r9") = (uint64_t *) a6_;
-
+	
 	__asm __volatile(
 			"mov %1, %%rax\n"
 			"mov %2, %%rdi\n"
@@ -22,10 +22,10 @@ static __inline int64_t syscall (uint64_t num_, uint64_t a1_, uint64_t a2_,
 			"mov %5, %%r10\n"
 			"mov %6, %%r8\n"
 			"mov %7, %%r9\n"
-			"syscall\n"
-			: "=a" (ret)
+			"syscall\n"		// 시스템 콜 실행
+			: "=a" (ret) 	// RAX 레지스터 값을 ret 변수에 저장
 			: "g" (num), "g" (a1), "g" (a2), "g" (a3), "g" (a4), "g" (a5), "g" (a6)
-			: "cc", "memory");
+			: "cc", "memory");  // cc 플래그와 메모리 영역에 영향을 줄 수 있다는 것을 알림
 	return ret;
 }
 

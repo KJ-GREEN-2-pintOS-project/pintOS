@@ -177,6 +177,9 @@ void thread_init(void)
 	/* Reload the temporal gdt for the kernel
 	 * This gdt does not include the user context.
 	 * The kernel will rebuild the gdt with user context, in gdt_init (). */
+	/* 커널을 위한 임시 GDT를 다시 로드합니다.
+	이 GDT에는 사용자 컨텍스트가 포함되어 있지 않습니다.
+	커널은 gdt_init()에서 사용자 컨텍스트를 포함하여 GDT를 다시 구성할 것입니다. */
 	struct desc_ptr gdt_ds = {
 		.size = sizeof(gdt) - 1,
 		.address = (uint64_t)gdt};
@@ -288,6 +291,12 @@ tid_t thread_create(const char *name, int priority,
 	init_thread(t, name, priority);
 	tid = t->tid = allocate_tid();
 
+	/* project 2 파일 디스크립터 커널 영역에 할당 */
+	t->fdt = palloc_get_page(PAL_ZERO);
+	if(t->fdt == NULL){
+		return TID_ERROR;
+	}
+
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
 	/* 스케줄되었다면 kernel_thread를 호출합니다.
@@ -302,6 +311,11 @@ tid_t thread_create(const char *name, int priority,
 	t->tf.eflags = FLAG_IF;
 	/* Add to run queue. */
 	thread_unblock(t);
+
+	/* project 2 현재(부모)의 리스트에 자식을 등록*/
+	list_push_back(&thread_current()->children,&t->child_elem);
+
+
 	/* 스레드를 만들어서 ready_list 에 입력했으니까 비교를 한번 해준다*/
 	thread_compare();
 
@@ -455,15 +469,7 @@ bool thread_compare_priority(const struct list_elem *a,
 /* 
 현재 실행중인 쓰레드와 대기 중인 쓰레드의 우선 순위 비교해서
 실행중인 쓰레드가 우선순위가 낮다면 양보한다.
-void
-thread_compare(struct list *cur_list){
-	if (!list_empty (&cur_list)) {
-		if(thread_compare_priority(&list_entry (list_front (&cur_list), struct thread, elem)->elem,
-									&thread_current()->elem,0)){
-			thread_yield();
-		}
-	}
-} */
+*/
 void thread_compare(void)
 {
 	// ready_list에 스레드가 존재한다면
@@ -526,33 +532,22 @@ void thread_donate(struct thread * t){
 	
 	thread_donate_depth();
 
-	thread_donate_reset(t);
-
 	intr_set_level(old_level);
 }
 
 /* 점유를 풀려고 들어오는 공간 */
-void thread_return_donate(struct lock *release_locker){
-	enum intr_level old_level;
-	old_level = intr_disable();
+void thread_remove_donate(struct lock *release_locker){
 	// 지금 락 점유를 갖고 있는 스레드를 지정한다
 	struct thread *t = release_locker->holder;
-	struct thread *temp = NULL;
 	struct list_elem *e = NULL;
-	// 기본적으로 본래 자신의 우선순위로 갱신
-	t->priority = t->init_priority;
 	
 	/* 기부 받은 우선순위가 변경 될 수 있으므로 donations를 순회 하면서 겹치는게 있다면 제거해준다.*/
 	for (e = list_begin(&t->donations); e != list_end(&t->donations); e = list_next(e)){
-		temp = list_entry(e,struct thread,d_elem);
-		if(temp->wait_on_lock == release_locker){
+		// 기부 받은 스레드의 락이 지금 락하고 같다면
+		if(list_entry(e,struct thread,d_elem)->wait_on_lock == release_locker){
 			list_remove(e);
 		}
 	}
-	
-	thread_donate_reset(t);
-
-	intr_set_level(old_level);
 }
 
 /* 스레드의 d_elem을 기준 삼아서 비교를 진행한다*/
@@ -565,6 +560,9 @@ bool thread_compare_donate_priority(const struct list_elem *a,
 
 /* 기부 받은 스레드가 변경 되었다면 리셋 해줘야한다*/
 void thread_donate_reset(struct thread *t){
+	// 기본적으로 본래 자신의 우선순위로 갱신
+	t->priority = t->init_priority;
+	
 	if(!list_empty(&t->donations)){
 		// 혹시라도 donations 리스트가 정렬이 안될 수 도 있기 때문에 정렬한다
 		list_sort(&t->donations,thread_compare_donate_priority,0);
@@ -716,13 +714,22 @@ init_thread(struct thread *t, const char *name, int priority)
 	strlcpy(t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *);
 	t->priority = priority;
-
+	/* project 1  초기화*/
 	t->init_priority = priority;
 	t->wait_on_lock = NULL;
 	list_init(&t->donations);
 
+	/* project 2 초기화*/
+	list_init(&t->children);
+	t->exit_status = 0;
+	t->next_fd = 2;
+	sema_init(&t->wait_sema,0);
+	sema_init(&t->clear_sema,0);
+
 	//t->donate_priority = priority;
 	t->magic = THREAD_MAGIC;
+
+	
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -748,29 +755,29 @@ next_thread_to_run(void)
 void do_iret(struct intr_frame *tf)
 {
 	__asm __volatile(
-		"movq %0, %%rsp\n"
-		"movq 0(%%rsp),%%r15\n"
-		"movq 8(%%rsp),%%r14\n"
-		"movq 16(%%rsp),%%r13\n"
-		"movq 24(%%rsp),%%r12\n"
-		"movq 32(%%rsp),%%r11\n"
-		"movq 40(%%rsp),%%r10\n"
-		"movq 48(%%rsp),%%r9\n"
-		"movq 56(%%rsp),%%r8\n"
-		"movq 64(%%rsp),%%rsi\n"
-		"movq 72(%%rsp),%%rdi\n"
-		"movq 80(%%rsp),%%rbp\n"
-		"movq 88(%%rsp),%%rdx\n"
-		"movq 96(%%rsp),%%rcx\n"
-		"movq 104(%%rsp),%%rbx\n"
-		"movq 112(%%rsp),%%rax\n"
-		"addq $120,%%rsp\n"
-		"movw 8(%%rsp),%%ds\n"
-		"movw (%%rsp),%%es\n"
-		"addq $32, %%rsp\n"
-		"iretq"
+		"movq %0, %%rsp\n"   // 스택 포인터 값을 복원합니다.
+		"movq 0(%%rsp),%%r15\n"   // 스택에서 값을 읽어와 r15 레지스터에 저장합니다.
+		"movq 8(%%rsp),%%r14\n"   // 스택에서 값을 읽어와 r14 레지스터에 저장합니다.
+		"movq 16(%%rsp),%%r13\n"   // 스택에서 값을 읽어와 r13 레지스터에 저장합니다.
+		"movq 24(%%rsp),%%r12\n"   // 스택에서 값을 읽어와 r12 레지스터에 저장합니다.
+		"movq 32(%%rsp),%%r11\n"   // 스택에서 값을 읽어와 r11 레지스터에 저장합니다.
+		"movq 40(%%rsp),%%r10\n"   // 스택에서 값을 읽어와 r10 레지스터에 저장합니다.
+		"movq 48(%%rsp),%%r9\n"   // 스택에서 값을 읽어와 r9 레지스터에 저장합니다.
+		"movq 56(%%rsp),%%r8\n"   // 스택에서 값을 읽어와 r8 레지스터에 저장합니다.
+		"movq 64(%%rsp),%%rsi\n"   // 스택에서 값을 읽어와 rsi 레지스터에 저장합니다.
+		"movq 72(%%rsp),%%rdi\n"   // 스택에서 값을 읽어와 rdi 레지스터에 저장합니다.
+		"movq 80(%%rsp),%%rbp\n"   // 스택에서 값을 읽어와 rbp 레지스터에 저장합니다.
+		"movq 88(%%rsp),%%rdx\n"   // 스택에서 값을 읽어와 rdx 레지스터에 저장합니다.
+		"movq 96(%%rsp),%%rcx\n"   // 스택에서 값을 읽어와 rcx 레지스터에 저장합니다.
+		"movq 104(%%rsp),%%rbx\n"   // 스택에서 값을 읽어와 rbx 레지스터에 저장합니다.
+		"movq 112(%%rsp),%%rax\n"   // 스택에서 값을 읽어와 rax 레지스터에 저장합니다.
+		"addq $120,%%rsp\n"   // 스택 포인터를 120만큼 증가시킵니다.
+		"movw 8(%%rsp),%%ds\n"   // 스택에서 값을 읽어와 ds 레지스터에 저장합니다.
+		"movw (%%rsp),%%es\n"   // 스택에서 값을 읽어와 es 레지스터에 저장합니다.
+		"addq $32, %%rsp\n"   // 스택 포인터를 32만큼 증가시킵니다.
+		"iretq"   // 인터럽트 복원 및 반환 명령을 실행합니다.
 		:
-		: "g"((uint64_t)tf)
+		: "g"((uint64_t)tf)   // tf 변수를 피연산자로 사용합니다.
 		: "memory");
 }
 

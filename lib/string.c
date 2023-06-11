@@ -3,6 +3,8 @@
 
 /* Copies SIZE bytes from SRC to DST, which must not overlap.
    Returns DST. */
+/* SRC에서 DST로 SIZE 바이트를 복사합니다. DST와 겹치면 안됩니다.
+DST를 반환합니다. */
 void *
 memcpy (void *dst_, const void *src_, size_t size) {
 	unsigned char *dst = dst_;
@@ -215,6 +217,72 @@ outputs:
 'to'
 'tokenize.'
 */
+/* Breaks a string into tokens separated by DELIMITERS.  The
+   first time this function is called, S should be the string to
+   tokenize, and in subsequent calls it must be a null pointer.
+   SAVE_PTR is the address of a `char *' variable used to keep
+   track of the tokenizer's position.  The return value each time
+   is the next token in the string, or a null pointer if no
+   tokens remain.
+
+   This function treats multiple adjacent delimiters as a single
+   delimiter.  The returned tokens will never be length 0.
+   DELIMITERS may change from one call to the next within a
+   single string.
+
+   strtok_r() modifies the string S, changing delimiters to null
+   bytes.  Thus, S must be a modifiable string.  String literals,
+   in particular, are *not* modifiable in C, even though for
+   backward compatibility they are not `const'.
+
+   Example usage:
+
+   char s[] = "  String to  tokenize. ";
+   char *token, *save_ptr;
+
+   for (token = strtok_r (s, " ", &save_ptr); token != NULL;
+   token = strtok_r (NULL, " ", &save_ptr))
+   printf ("'%s'\n", token);
+
+outputs:
+
+'String'
+'to'
+'tokenize.'
+*/
+
+/* DELIMITERS로 구분된 토큰으로 문자열을 나눕니다.
+이 함수를 처음 호출할 때에는 S가 토큰화할 문자열이어야 하며,
+이후 호출에서는 null 포인터이어야 합니다.
+SAVE_PTR는 토크나이저의 위치를 추적하는 데 사용되는
+'char *' 변수의 주소입니다.
+각 호출마다 반환 값은 문자열에서 다음 토큰이거나,
+토큰이 남아있지 않은 경우에는 null 포인터입니다.
+
+이 함수는 여러 개의 인접한 구분자를 하나의 구분자로 처리합니다.
+반환된 토큰은 길이 0이 아닙니다.
+DELIMITERS는 단일 문자열 내에서 한 호출에서 다음 호출로 변경될 수 있습니다.
+
+strtok_r()은 문자열 S를 수정하여 구분자를 null 바이트로 변경합니다.
+따라서 S는 수정 가능한 문자열이어야 합니다.
+특히 C에서 문자열 리터럴은 수정 가능하지 않지만
+(역 호환성을 위해) 'const'가 아닙니다.
+
+사용 예시:
+
+char s[] = " String to tokenize. ";
+char *token, *save_ptr;
+
+for (token = strtok_r(s, " ", &save_ptr); token != NULL;
+token = strtok_r(NULL, " ", &save_ptr))
+printf("'%s'\n", token);
+
+출력:
+
+'String'
+'to'
+'tokenize.'
+*/
 char *
 strtok_r (char *s, const char *delimiters, char **save_ptr) {
 	char *token;
@@ -293,11 +361,17 @@ strnlen (const char *string, size_t maxlen) {
    characters, only SIZE - 1 characters are copied.  A null
    terminator is always written to DST, unless SIZE is 0.
    Returns the length of SRC, not including the null terminator.
-
    strlcpy() is not in the standard C library, but it is an
    increasingly popular extension.  See
 http://www.courtesan.com/todd/papers/strlcpy.html for
 information on strlcpy(). */
+/* 문자열 SRC를 DST로 복사합니다. 만약 SRC가 SIZE - 1보다 길다면,
+SIZE - 1만큼의 문자만 복사됩니다. SIZE가 0인 경우를 제외하고 항상
+null 종료 문자가 DST에 작성됩니다. null 종료 문자를 제외한 SRC의 길이를
+반환합니다.
+strlcpy()는 표준 C 라이브러리에는 포함되어 있지 않지만, 점점 더 많이 사용되는
+확장 기능입니다. strlcpy()에 대한 정보는
+http://www.courtesan.com/todd/papers/strlcpy.html을 참조하십시오. */
 size_t
 strlcpy (char *dst, const char *src, size_t size) {
 	size_t src_len;

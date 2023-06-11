@@ -21,6 +21,13 @@ static void vsnprintf_helper (char, void *);
    BUF_SIZE is zero.  Returns the number of characters that would
    have been written to BUFFER, not including a null terminator,
    had there been enough room. */
+/* vprintf()과 유사하지만, 출력을 BUFFER에 저장합니다.
+	BUFFER는 BUF_SIZE 문자의 공간을 가져야 합니다.
+	최대 BUF_SIZE - 1 문자를 BUFFER에 작성한 다음
+	null 종료자를 추가합니다. BUF_SIZE가 0이 아닌 한
+	BUFFER는 항상 null 종료됩니다.
+	충분한 공간이 있었다면 null 종료자를 제외한 BUFFER에 쓰여진
+	문자의 수를 반환합니다. */
 int
 vsnprintf (char *buffer, size_t buf_size, const char *format, va_list args) {
 	/* Set up aux data for vsnprintf_helper(). */
@@ -55,6 +62,13 @@ vsnprintf_helper (char ch, void *aux_) {
    BUF_SIZE is zero.  Returns the number of characters that would
    have been written to BUFFER, not including a null terminator,
    had there been enough room. */
+/* printf()과 유사하지만, 출력을 BUFFER에 저장합니다.
+	BUFFER는 BUF_SIZE 문자의 공간을 가져야 합니다.
+	최대 BUF_SIZE - 1 문자를 BUFFER에 작성한 다음
+	null 종료자를 추가합니다. BUF_SIZE가 0이 아닌 한
+	BUFFER는 항상 null 종료됩니다.
+	충분한 공간이 있었다면 null 종료자를 제외한 BUFFER에 쓰여진
+	문자의 수를 반환합니다. */
 int
 snprintf (char *buffer, size_t buf_size, const char *format, ...) {
 	va_list args;
@@ -277,8 +291,8 @@ __vprintf (const char *format, va_list args,
 						s = "(null)";
 
 					/* Limit string length according to precision.
-Note: if c.precision == -1 then strnlen() will get
-SIZE_MAX for MAXLEN, which is just what we want. */
+					Note: if c.precision == -1 then strnlen() will get
+					SIZE_MAX for MAXLEN, which is just what we want. */
 					format_string (s, strnlen (s, c.precision), &c, output, aux);
 				}
 				break;
@@ -317,6 +331,10 @@ SIZE_MAX for MAXLEN, which is just what we want. */
    initializes C appropriately.  Returns the character in FORMAT
    that indicates the conversion (e.g. the `d' in `%d').  Uses
  *ARGS for `*' field widths and precisions. */
+/* FORMAT에서 시작하는 변환 옵션 문자를 구문 분석하고
+C를 적절하게 초기화합니다. 변환을 나타내는 FORMAT의 문자를 반환합니다
+(예: %d'에서 d'를 반환합니다). `*' 필드 폭 및 정밀도에는
+*ARGS를 사용합니다. */
 static const char *
 parse_conversion (const char *format, struct printf_conversion *c,
 		va_list *args) {
@@ -433,6 +451,10 @@ not_a_flag:
    unsigned conversion and ignores NEGATIVE.  The output is done
    according to the provided base B.  Details of the conversion
    are in C. */
+/* 정수 변환을 수행하여 결과를 AUX 보조 데이터와 함께 OUTPUT에 기록합니다.
+	변환되는 정수는 절대값이 VALUE인데, IS_SIGNED가 true인 경우 음수 값을 나타내는 NEGATIVE를 사용하여
+	부호 있는 변환을 수행합니다. 그렇지 않으면 부호 없는 변환을 수행하고 NEGATIVE를 무시합니다.
+	출력은 제공된 기수 B에 따라 수행됩니다. 변환의 자세한 내용은 C에 있습니다. */
 static void
 format_integer (uintmax_t value, bool is_signed, bool negative,
 		const struct integer_base *b,
@@ -448,6 +470,9 @@ format_integer (uintmax_t value, bool is_signed, bool negative,
 	/* Determine sign character, if any.
 	   An unsigned conversion will never have a sign character,
 	   even if one of the flags requests one. */
+	/* 필요한 경우 부호 문자를 결정합니다.
+	부호 없는 변환에는 어떤 경우에도 부호 문자가 포함되지 않습니다.
+	단 하나의 플래그에서 요청해도 부호 없는 변환이기 때문입니다. */
 	sign = 0;
 	if (is_signed) {
 		if (c->flags & PLUS)
@@ -461,11 +486,17 @@ format_integer (uintmax_t value, bool is_signed, bool negative,
 	/* Determine whether to include `0x' or `0X'.
 	   It will only be included with a hexadecimal conversion of a
 	   nonzero value with the # flag. */
+	/* `0x' 또는 `0X'를 포함할지 여부를 결정합니다.
+	의 16진수 변환에만 포함됩니다.
+	# 플래그가 있는 0이 아닌 값. */
 	x = (c->flags & POUND) && value ? b->x : 0;
 
 	/* Accumulate digits into buffer.
 	   This algorithm produces digits in reverse order, so later we
 	   will output the buffer's content in reverse. */
+	/* 버퍼에 숫자를 누적합니다.
+	이 알고리즘은 숫자를 역순으로 생성하므로 나중에
+	버퍼의 내용을 반대로 출력합니다. */
 	cp = buf;
 	digit_cnt = 0;
 	while (value > 0) {
@@ -481,6 +512,10 @@ format_integer (uintmax_t value, bool is_signed, bool negative,
 	   rendered as a null string, otherwise as "0".
 	   If the # flag is used with base 8, the result must always
 	   begin with a zero. */
+	/* 정밀도에 맞게 충분한 수의 0을 추가합니다.
+	요청된 정밀도가 0이면 값이 0인 경우 null 문자열로 표시되고,
+	그렇지 않으면 "0"으로 표시됩니다.
+	만약 base 8과 함께 # 플래그가 사용된 경우 결과는 항상 0으로 시작해야 합니다. */
 	precision = c->precision < 0 ? 1 : c->precision;
 	while (cp - buf < precision && cp < buf + sizeof buf - 1)
 		*cp++ = '0';
@@ -519,6 +554,8 @@ output_dup (char ch, size_t cnt, void (*output) (char, void *), void *aux) {
 /* Formats the LENGTH characters starting at STRING according to
    the conversion specified in C.  Writes output to OUTPUT with
    auxiliary data AUX. */
+/* C에서 지정된 변환에 따라 STRING에서 시작하는 LENGTH 문자를 서식화합니다.
+출력은 AUX 보조 데이터와 함께 OUTPUT에 기록됩니다. */
 static void
 format_string (const char *string, int length,
 		struct printf_conversion *c,
@@ -549,6 +586,9 @@ __printf (const char *format,
    starting at OFS for the first byte in BUF.  If ASCII is true
    then the corresponding ASCII characters are also rendered
    alongside. */
+/* BUF의 SIZE 바이트를 16개씩 한 줄에 정렬하여 16진수 바이트로 콘솔에 출력합니다.
+	첫 번째 바이트의 오프셋으로 OFS부터 숫자 오프셋도 포함됩니다.
+	ASCII가 true인 경우 해당하는 ASCII 문자도 함께 표시됩니다. */
 void
 hex_dump (uintptr_t ofs, const void *buf_, size_t size, bool ascii) {
 	const uint8_t *buf = buf_;

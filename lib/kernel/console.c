@@ -34,7 +34,10 @@ static bool use_console_lock;
    try to recursively grab console_lock from a single thread.  As
    a real example, I added a printf() call to palloc_free().
    Here's a real backtrace that resulted:
-
+	Pintos에 충분한 디버그 출력을 추가하면 가능합니다.
+   단일 스레드에서 재귀적으로 console_lock을 가져오십시오. 처럼
+   실제 예에서 나는 palloc_free()에 printf() 호출을 추가했습니다.
+   다음은 실제 역추적 결과입니다.
    lock_console()
    vprintf()
    printf()             - palloc() tries to grab the lock again
@@ -139,6 +142,7 @@ puts (const char *s) {
 }
 
 /* Writes the N characters in BUFFER to the console. */
+/* BUFFER에 있는 N개의 문자를 콘솔에 씁니다. */
 void
 putbuf (const char *buffer, size_t n) {
 	acquire_console ();

@@ -64,6 +64,10 @@ inode_init (void) {
  * disk.
  * Returns true if successful.
  * Returns false if memory or disk allocation fails. */
+/* 길이가 LENGTH인 데이터로 inode를 초기화하고
+새로운 inode를 파일 시스템 디스크의 섹터 SECTOR에 기록합니다.
+성공하면 true를 반환합니다.
+메모리 또는 디스크 할당이 실패하면 false를 반환합니다. */
 bool
 inode_create (disk_sector_t sector, off_t length) {
 	struct inode_disk *disk_inode = NULL;
@@ -103,7 +107,6 @@ struct inode *
 inode_open (disk_sector_t sector) {
 	struct list_elem *e;
 	struct inode *inode;
-
 	/* Check whether this inode is already open. */
 	for (e = list_begin (&open_inodes); e != list_end (&open_inodes);
 			e = list_next (e)) {

@@ -33,7 +33,26 @@
    descriptor.  We handle those by allocating contiguous pages
    with the page allocator and sticking the allocation size at
    the beginning of the allocated block's arena header. */
+/* malloc()의 간단한 구현입니다.
 
+각 요청의 크기는 바이트 단위로 반올림하여 2의 거듭제곱으로 설정되고,
+해당 크기의 블록을 관리하는 "기술자(descriptor)"에 할당됩니다.
+기술자는 빈 블록의 목록을 유지합니다.
+빈 목록이 비어있지 않은 경우, 그 중 하나의 블록을 사용하여 요청을 충족시킵니다.
+
+그렇지 않은 경우, "arena"라고 불리는 새로운 메모리 페이지가
+페이지 할당기로부터 가져옵니다 (사용 가능한 페이지가 없는 경우, malloc()은 널 포인터를 반환합니다).
+새로운 arena는 블록으로 나누어지며, 모든 블록은 기술자의 빈 목록에 추가됩니다.
+그런 다음 새로운 블록 중 하나를 반환합니다.
+
+블록을 해제할 때, 해당 블록을 소유한 기술자의 빈 목록에 추가합니다.
+그러나 블록이 속한 arena에 더 이상 사용 중인 블록이 없다면,
+해당 arena의 모든 블록을 빈 목록에서 제거하고 arena를 페이지 할당기에 반환합니다.
+
+이 방식으로 2kB보다 큰 블록은 처리할 수 없습니다.
+왜냐하면 한 개의 페이지에 크기가 너무 커서 기술자와 함께 들어갈 수 없기 때문입니다.
+그런 경우에는 페이지 할당기를 사용하여 연속된 페이지를 할당하고,
+할당된 블록의 arena 헤더의 시작 부분에 할당 크기를 저장합니다. */
 /* Descriptor. */
 struct desc {
 	size_t block_size;          /* Size of each element in bytes. */
@@ -145,6 +164,8 @@ malloc (size_t size) {
 
 /* Allocates and return A times B bytes initialized to zeroes.
    Returns a null pointer if memory is not available. */
+/* A*B 바이트 크기의 메모리를 할당하고 0으로 초기화한 후 반환합니다.
+메모리를 사용할 수 없는 경우 널 포인터를 반환합니다. */
 void *
 calloc (size_t a, size_t b) {
 	void *p;

@@ -7,7 +7,7 @@
 struct file {
 	struct inode *inode;        /* File's inode. */
 	off_t pos;                  /* Current position. */
-	bool deny_write;            /* Has file_deny_write() been called? */
+	bool deny_write;            /* Has file_deny_write() been called? *//* file_deny_write() 함수가 호출되었는지 확인되었나요? */
 };
 
 /* Opens a file for the given INODE, of which it takes ownership,
@@ -69,6 +69,12 @@ file_get_inode (struct file *file) {
  * Returns the number of bytes actually read,
  * which may be less than SIZE if end of file is reached.
  * Advances FILE's position by the number of bytes read. */
+/* 
+FILE로부터 현재 위치에서 시작하여 SIZE 바이트를 BUFFER로 읽어옵니다.
+파일의 끝에 도달하면 SIZE보다 작을 수 있는 
+실제로 읽어온 바이트 수를 반환합니다.
+읽어온 바이트 수만큼 FILE의 위치를 앞으로 이동시킵니다.
+ */
 off_t
 file_read (struct file *file, void *buffer, off_t size) {
 	off_t bytes_read = inode_read_at (file->inode, buffer, size, file->pos);
@@ -115,6 +121,8 @@ file_write_at (struct file *file, const void *buffer, off_t size,
 
 /* Prevents write operations on FILE's underlying inode
  * until file_allow_write() is called or FILE is closed. */
+/* FILE의 기반이 되는 i-node에 대한 쓰기 작업을 막습니다.
+file_allow_write()가 호출되거나 FILE이 닫힐 때까지 쓰기 작업이 불가능합니다. */
 void
 file_deny_write (struct file *file) {
 	ASSERT (file != NULL);
@@ -127,6 +135,8 @@ file_deny_write (struct file *file) {
 /* Re-enables write operations on FILE's underlying inode.
  * (Writes might still be denied by some other file that has the
  * same inode open.) */
+/* FILE의 기반이 되는 i-node에 대한 쓰기 작업을 다시 허용합니다.
+(동일한 i-node를 열고 있는 다른 파일에 의해 쓰기 작업이 거부될 수 있습니다.) */
 void
 file_allow_write (struct file *file) {
 	ASSERT (file != NULL);

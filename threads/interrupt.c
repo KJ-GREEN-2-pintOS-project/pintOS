@@ -380,6 +380,10 @@ pic_end_of_interrupt (int irq) {
    function is called by the assembly language interrupt stubs in
    intr-stubs.S.  FRAME describes the interrupt and the
    interrupted thread's registers. */
+
+/* 모든 인터럽트, 폴트, 예외에 대한 핸들러입니다. 
+이 함수는 intr-stubs.S 파일의 어셈블리 언어 인터럽트 스텁에 의해 호출됩니다. 
+FRAME은 인터럽트와 중단된 스레드의 레지스터에 대한 설명입니다. */
 void
 intr_handler (struct intr_frame *frame) {
 	bool external;

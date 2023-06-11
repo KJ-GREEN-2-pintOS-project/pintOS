@@ -44,6 +44,8 @@ dir_open (struct inode *inode) {
 
 /* Opens the root directory and returns a directory for it.
  * Return true if successful, false on failure. */
+/* 루트 디렉토리를 열고 해당 디렉토리에 대한 디렉토리를 반환합니다.
+성공하면 true를 반환하고, 실패하면 false를 반환합니다. */
 struct dir *
 dir_open_root (void) {
 	return dir_open (inode_open (ROOT_DIR_SECTOR));
@@ -123,6 +125,12 @@ dir_lookup (const struct dir *dir, const char *name,
  * Returns true if successful, false on failure.
  * Fails if NAME is invalid (i.e. too long) or a disk or memory
  * error occurs. */
+/* DIR에 NAME이라는 이름을 가진 파일을 추가합니다. 
+DIR에 이미 같은 이름의 파일이 있는 경우 실패합니다.
+파일의 inode는 섹터 INODE_SECTOR에 저장됩니다.
+성공하면 true를 반환하고, 실패하면 false를 반환합니다.
+NAME이 유효하지 않은 경우(즉, 너무 긴 경우)나 
+디스크 또는 메모리 오류가 발생한 경우 실패합니다. */
 bool
 dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector) {
 	struct dir_entry e;
